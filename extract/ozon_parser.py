@@ -2,13 +2,14 @@ import os
 
 from dotenv import load_dotenv
 
-from parsers.urls import OzonPerformanceUrls, OzonSellerUrls
+from extract.urls import OzonPerformanceUrls, OzonSellerUrls
 from settings import REQUESTS_SESSION
 
 load_dotenv()
 
 
 class OzonSellerParser:
+    """Данные с Ozon Seller"""
 
     __HEADERS = {"Client-Id": os.getenv("client_id"), "Api-Key": os.getenv("client_secret")}
 
@@ -71,4 +72,6 @@ class OzonSellerParser:
 
 
 class OzonPerformanceParser:
+    """Данные с Ozon Performance"""
+
     pass

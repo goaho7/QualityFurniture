@@ -1,7 +1,6 @@
 import requests
 from urllib3 import Retry
 
-
 REQUESTS_SESSION = requests.Session()
 REQUESTS_ADAPTER = requests.adapters.HTTPAdapter(
     pool_connections=100,
@@ -16,3 +15,33 @@ REQUESTS_ADAPTER = requests.adapters.HTTPAdapter(
     ),
 )
 REQUESTS_SESSION.mount("http://", REQUESTS_ADAPTER)
+
+FILE_HEADERS = {
+    "A": "Дата",
+    "B": "Технический ID",
+    "C": "Артикул продавца",
+    "D": "Универсальный артикул",
+    "E": "Группа из справочника",
+    "F": "Название товара",
+    "G": "Комиссия FBO",
+    "H": "Комиссия FBS",
+    "I": "Автоматическое подключение к акциям",
+    "J": "Цена до скидки",
+    "K": "Ваша цена до участия в акциях",
+    "L": "Наша цена с учетом акций",
+    "M": "Цена для покупателя",
+    "N": "Минимальная цена",
+    "O": "Индекс цен, градация",
+    "P": "Рыночная цена на других площадках",
+    "Q": "Индекс цены, %/external_index_data_price_index_value",
+    "R": "ozon_index_data_minimal_price",
+    "S": "ozon_index_data_price_index_value",
+    "T": "self_marketplaces_index_data_minimal_price/Полочная цена, руб",
+    "U": "Название способа продвижения",
+    "V": "Название инструмента",
+    "W": "участвует/доступен",
+    "X": "Видимые показы IAB",
+    "Y": "Показы",
+    "Z": "Клики",
+    "AA": "CTR (%)",
+}

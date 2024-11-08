@@ -1,3 +1,6 @@
-from parsers.ozon_parser import OzonSellerParser
+from extract.nomenclatures import NomenclaturesFile
+from extract.ozon_parser import OzonSellerParser
+from services.price_data import PriceData
+from transforms.price_transforms import PriceTransform
 
-OzonSellerParser().get_list_products_in_actions(1177169, is_participates=False)
+print(PriceData(OzonSellerParser, NomenclaturesFile, PriceTransform).price_data()[0])
