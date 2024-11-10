@@ -16,9 +16,10 @@ REQUESTS_ADAPTER = requests.adapters.HTTPAdapter(
 )
 REQUESTS_SESSION.mount("http://", REQUESTS_ADAPTER)
 
+
 FILE_HEADERS = {
     "A": "Дата",
-    "B": "Технический ID",
+    "B": "Технический ID/product_id",
     "C": "Артикул продавца",
     "D": "Универсальный артикул",
     "E": "Группа из справочника",
