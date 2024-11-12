@@ -2,7 +2,7 @@ import time
 
 from sqlalchemy import delete, select
 
-from models.models import Token, sqlite_session
+from models import Token, sqlite_session
 
 
 class TokenRepository:

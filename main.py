@@ -1,18 +1,22 @@
-import pandas as pd
+import logging
 
-from extract.nomenclatures import NomenclaturesFile
+import pandas as pd
+import requests
+
 from extract.ozon_parser import OzonPerformanceParser, OzonSellerParser
 from repositories.campaign_repository import CampaignRepository
-from repositories.statistic_repository import StatisticRepository
 from repositories.token_repository import TokenRepository
-from services.campaign_service import CampaignService
-from services.price_service import PriceService
-from services.statistic_service import StatisticService
-from transforms.price_transforms import PriceTransform
+from services.depensens import campaign_service, excel_service, statistic_service
+
+logging.basicConfig(
+    level=logging.DEBUG, format="%(filename)s:%(lineno)d #%(levelname)-8s " "[%(asctime)s] - %(name)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
 
 
-def load_price_data():
-    data = PriceService(OzonSellerParser, NomenclaturesFile, PriceTransform).data()
+def load_data(data: dict):
+    """Дозаписывает данные в файл"""
     file_path = "Общая модель.xlsx"
 
     df_new = pd.DataFrame(data)
@@ -25,15 +29,13 @@ def load_price_data():
             sheet_name="Содержательная бизнес логика",
             startrow=writer.sheets["Содержательная бизнес логика"].max_row,
         )
-
-        print("Данные успешно добавлены.")
+        logger.info("Данные успешно добавлены в файл.")
 
 
 if __name__ == "__main__":
-    statistic_service = StatisticService(
-        OzonPerformanceParser, CampaignRepository, StatisticRepository, TokenRepository
-    )
-    campaign_service = CampaignService(OzonPerformanceParser, CampaignRepository, TokenRepository)
+    # campaign_service().update_campaigns()
+    # statistic_service().all_reports()
 
-    campaign_service.update_campaigns()
-    statistic_service.all_reports()
+    # for i, j in excel_service().products_in_all_actions().items():
+    #     print(i, j)
+    load_data(excel_service().prices())

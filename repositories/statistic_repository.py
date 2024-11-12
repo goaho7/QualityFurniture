@@ -1,67 +1,89 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from models.models import CampaignStatistics, sqlite_session
+from sqlalchemy.dialects.sqlite import insert
+
+from models import (
+    BannerStatistics,
+    SearchStatistics,
+    StencilStatistics,
+    VideoBannerStatistics,
+    sqlite_session,
+)
 
 
 class StatisticRepository:
-    model = CampaignStatistics
+    model = {
+        "BANNER": BannerStatistics,
+        "SEARCH_PROMO": SearchStatistics,
+        "SKU": StencilStatistics,
+        "VIDEO_BANNER": VideoBannerStatistics,
+    }
+    index_elements = {
+        "BANNER": ["campaign_id", "date"],
+        "SEARCH_PROMO": ["date", "sku"],
+        "SKU": ["date", "sku"],
+        "VIDEO_BANNER": ["campaign_id", "date"],
+    }
 
-    def update_statistics(self, data: dict, campaigns: dict):
-        """Обновить таблицу статистики"""
+    @staticmethod
+    def str_to_float(string: str):
+        """Преобразует строку в тип foat"""
+        return float(string.replace(",", ".")) if string else None
+
+    def update_statistics(self, data: dict, campaigns: dict, date: datetime):
+        """Обновить таблицы статистики"""
+
         with sqlite_session() as session:
-            statistics = []
             for key, value in data.items():
                 if value["report"]["rows"]:
                     for i in value["report"]["rows"]:
-                        statistic = self.model(
-                            date=(datetime.now() - timedelta(days=1)),
-                            product_name=i.get("title"),
-                            sku=i.get("sku"),
-                            views=i.get("views"),
-                            ctr=float(i.get("ctr").replace(",", ".")) if i.get("ctr") else None,
-                            clicks=i.get("clicks"),
-                            conversion=None,
-                            avg_bid=float(i.get("avgBid").replace(",", ".")) if i.get("avgBid") else None,
-                            money_spent=float(i.get("moneySpent").replace(",", ".")) if i.get("moneySpent") else None,
-                            orders=i.get("orders"),
-                            orders_money=(
-                                float(i.get("ordersMoney").replace(",", ".")) if i.get("ordersMoney") else None
-                            ),
-                            models=i.get("models"),
-                            models_money=(
-                                float(i.get("modelsMoney").replace(",", ".")) if i.get("modelsMoney") else None
-                            ),
-                            reach=None,
-                            order_id=None,
-                            order_number=None,
-                            ozon_id=None,
-                            ozon_id_of_promoted_product=None,
-                            article=None,
-                            name=None,
-                            quantity=None,
-                            price=float(i.get("price").replace(",", ".")) if i.get("price") else None,
-                            cost=None,
-                            bid_in_percent=None,
-                            bid=None,
-                            banner=None,
-                            banner_id=None,
-                            page_type=i.get("pageType"),
-                            display_condition=None,
-                            platform=None,
-                            avg_price_per_1000_impressions=None,
-                            iab_viewable_impressions=None,
-                            share_viewable_impressions=None,
-                            inspections_quartiles_25=None,
-                            inspections_quartiles_50=None,
-                            inspections_quartiles_75=None,
-                            inspections_quartiles_100=None,
-                            share_inspections_25=None,
-                            share_inspections_50=None,
-                            share_inspections_75=None,
-                            share_inspections_100=None,
-                            views_with_sound=None,
-                            campaign_id=campaigns[int(key)],
-                        )
-                        statistics.append(statistic)
-            session.bulk_save_objects(statistics)
+                        model = self.model.get(campaigns[int(key)][1])
+                        if model:
+                            index_elements = self.index_elements[campaigns[int(key)][1]]
+                            insert_values = {
+                                "campaign_id": campaigns[int(key)][0],
+                                "date": date,
+                                **{
+                                    field: value
+                                    for field, value in {
+                                        "sku": i.get("sku"),
+                                        "name": i.get("title"),
+                                        "price": self.str_to_float(i.get("price")),
+                                        "money_spent": self.str_to_float(i.get("moneySpent")),
+                                        "views": i.get("views"),
+                                        "clicks": i.get("clicks"),
+                                        "ctr": self.str_to_float(i.get("ctr")),
+                                        "avg_bid": self.str_to_float(i.get("avgBid")),
+                                        "reach": i.get("reach"),
+                                        "orders": i.get("orders"),
+                                        "order_id": i.get("order_id"),
+                                        "order_number": i.get("order_number"),
+                                        "adv_sku": i.get("adv_sku"),
+                                        "offer_id": i.get("offer_id"),
+                                        "quantity": i.get("quantity"),
+                                        "sale_price": self.str_to_float(i.get("sale_price")),
+                                        "bid": self.str_to_float(i.get("bid")),
+                                        "bid_value": self.str_to_float(i.get("bid_value")),
+                                        "orders_money": self.str_to_float(i.get("ordersMoney")),
+                                        "models": i.get("models"),
+                                        "models_money": self.str_to_float(i.get("modelsMoney")),
+                                        "banner": i.get("banner"),
+                                        "page_type": i.get("pageType"),
+                                        "attributes_platform": i.get("attributes_platform"),
+                                    }.items()
+                                    if hasattr(model, field)
+                                },
+                            }
+                            insert_stmt = insert(model).values(insert_values)
+
+                            update_values = {
+                                field: value
+                                for field, value in insert_values.items()
+                                if field in model.__table__.columns
+                            }
+                            on_conflict_stmt = insert_stmt.on_conflict_do_update(
+                                index_elements=index_elements,
+                                set_=update_values,
+                            )
+                            session.execute(on_conflict_stmt)
             session.commit()

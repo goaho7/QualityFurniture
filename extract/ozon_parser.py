@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import requests
 from dotenv import load_dotenv
@@ -33,11 +33,11 @@ class OzonSellerParser:
         for _ in range(3):
             try:
                 response = request.request(method, url, **kwargs)
+                if response.status_code == 404:
+                    return None
                 response.raise_for_status()
                 return response.json()
             except RequestException as e:
-                if response and response.status_code == 404:
-                    return None
                 logger.error(f"Ошибка при запросе {url}: {e}")
                 time.sleep(3)
         return None
@@ -52,7 +52,7 @@ class OzonSellerParser:
             return data
         result = []
         result.extend(data)
-        while True:
+        while response:
             payload.update({"last_id": response["result"]["last_id"]})
             response = self._make_request("post", OzonSellerUrls.price_info, headers=self.__HEADERS, json=payload)
             if response is None:
@@ -100,14 +100,6 @@ class OzonSellerParser:
             if offset >= total:
                 break
         return products
-
-    def products_in_all_actions(self) -> dict:
-        """Возвращает словарь где ключ это product_id, а значение - список акций в которых участвует товар"""
-        res = {}
-        for action in self.get_actions_list():
-            for products in self.get_list_products_in_actions(action["id"]):
-                res.setdefault(products["id"], []).append(action["title"])
-        return res
 
 
 class OzonPerformanceParser:
@@ -165,9 +157,9 @@ class OzonPerformanceParser:
             raise RequestException("Не удалось получить список кампаний после нескольких попыток.")
         return response["list"]
 
-    def campaign_statistics(self, campaign_id_list) -> str:
+    def campaign_statistics(self, campaign_id_list, date: datetime) -> str:
         """Сделать запрос и получить UUID запроса на статистику по кампаниям (максимум 10 кампаний за раз)"""
-        yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        yesterday_str = date.strftime("%Y-%m-%d")
         payload = {
             "campaigns": campaign_id_list,
             "dateFrom": yesterday_str,

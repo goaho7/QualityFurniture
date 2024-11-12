@@ -1,6 +1,10 @@
+import logging
+
 from extract.ozon_parser import OzonPerformanceParser
 from repositories.campaign_repository import CampaignRepository
 from repositories.token_repository import TokenRepository
+
+logger = logging.getLogger(__name__)
 
 
 class CampaignService:
@@ -15,5 +19,6 @@ class CampaignService:
 
     def update_campaigns(self):
         """Обновить таблицу кампаний в БД"""
-        data = self.ozon_performance.get_campaign_list()
-        self.campaign_repository.update_campaign(data)
+        data = self.ozon_performance.get_campaign_list()  # Получение кампаний через API
+        self.campaign_repository.update_campaign(data)  # Сохранение в БД
+        logger.info("Кампании обновлены")

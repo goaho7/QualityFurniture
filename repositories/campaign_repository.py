@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from models.models import Campaign, sqlite_session
+from sqlalchemy.dialects.sqlite import insert
+
+from models import Campaign, sqlite_session
 
 
 class CampaignRepository:
@@ -19,10 +21,8 @@ class CampaignRepository:
     def update_campaign(self, data: list):
         """Обновление таблицы кампаний"""
         with sqlite_session() as session:
-            session.query(self.model).delete()
-            campaigns = []
             for c in data:
-                campaign = self.model(
+                insert_stmt = insert(self.model).values(
                     campaign_id=c["id"],
                     title=c["title"],
                     state=c["state"],
@@ -36,6 +36,21 @@ class CampaignRepository:
                     product_autopilot_strategy=c["productAutopilotStrategy"],
                     product_campaign_mode=c["productCampaignMode"],
                 )
-                campaigns.append(campaign)
-            session.bulk_save_objects(campaigns)
+                on_conflict_stmt = insert_stmt.on_conflict_do_update(
+                    index_elements=["campaign_id"],
+                    set_={
+                        "title": c["title"],
+                        "state": c["state"],
+                        "adv_object_type": c["advObjectType"],
+                        "from_date": datetime.fromisoformat(c["fromDate"]) if c["fromDate"] else None,
+                        "to_date": datetime.fromisoformat(c["toDate"]) if c["toDate"] else None,
+                        "budget": float(c["budget"]),
+                        "daily_budget": float(c["dailyBudget"]),
+                        "weekly_budget": float(c["weeklyBudget"]),
+                        "placement": ", ".join(c["placement"]),
+                        "product_autopilot_strategy": c["productAutopilotStrategy"],
+                        "product_campaign_mode": c["productCampaignMode"],
+                    },
+                )
+                session.execute(on_conflict_stmt)
             session.commit()
