@@ -1,12 +1,12 @@
 import time
 
 from sqlalchemy import (
+    JSON,
     Date,
     DateTime,
     ForeignKey,
     Integer,
     String,
-    Text,
     UniqueConstraint,
     create_engine,
 )
@@ -63,6 +63,21 @@ class Campaign(Base):
     )
 
 
+class Product(Base):
+    """Товары"""
+
+    __tablename__ = "product"
+
+    id: Mapped[int] = mapped_column(autoincrement=True, primary_key=True)
+    name: Mapped[str] = mapped_column(String(500), nullable=True, comment="Название")
+    external_id: Mapped[int] = mapped_column(unique=True, nullable=False, comment="Идентификатор товара product_id")
+    offer_id: Mapped[str] = mapped_column(String(150), comment="Идентификатор товара в системе продавца — артикул")
+    barcode: Mapped[str] = mapped_column(String(150), comment="Штрихкод")
+    barcodes = mapped_column(JSON(), comment="Все штрихкоды товара")
+    sku: Mapped[int] = mapped_column(comment="SKU товара")
+    stocks = mapped_column(JSON(), comment="Информация об остатках товара")
+
+
 class SearchStatistics(Base):
     """Статистика по поиску"""
 
@@ -77,13 +92,14 @@ class SearchStatistics(Base):
     price: Mapped[float] = mapped_column(nullable=True, comment="Цена")
     money_spent: Mapped[float] = mapped_column(nullable=True, comment="Расход, руб, с НДС")
     order_id: Mapped[int] = mapped_column(nullable=True, comment="ID заказа")
-    order_number: Mapped[int] = mapped_column(nullable=True, comment="Номер заказа")
+    order_number: Mapped[str] = mapped_column(String(255), nullable=True, comment="Номер заказа")
     adv_sku: Mapped[int] = mapped_column(nullable=True, comment="Ozon ID продвигаемого товара")
     offer_id: Mapped[str] = mapped_column(String(255), nullable=True, comment="Артикул")
     quantity: Mapped[int] = mapped_column(nullable=True, comment="Количество")
     sale_price: Mapped[float] = mapped_column(nullable=True, comment="Стоимость")
     bid: Mapped[float] = mapped_column(nullable=True, comment="Ставка в процентах")
     bid_value: Mapped[float] = mapped_column(nullable=True, comment="Ставка")
+    cost: Mapped[float] = mapped_column(nullable=True)
 
     campaign: Mapped["Campaign"] = relationship("Campaign", back_populates="search_statistics")
 
@@ -164,6 +180,16 @@ class VideoBannerStatistics(Base):
     views_with_sound: Mapped[int] = mapped_column(nullable=True, comment="Просмотры со звуком")
 
     campaign: Mapped["Campaign"] = relationship("Campaign", back_populates="video_banner_statistics")
+
+
+class StatisticsHistory(Base):
+    """История отчётов статистики"""
+
+    __tablename__ = "statistics_history"
+
+    id: Mapped[int] = mapped_column(autoincrement=True, primary_key=True)
+    date: Mapped[Date] = mapped_column(Date, unique=True, nullable=False, index=True)
+    uuids = mapped_column(JSON(), comment="Список uuids отчётов")
 
 
 engine = create_engine("sqlite:///database.db")

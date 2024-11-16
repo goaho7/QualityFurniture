@@ -5,6 +5,8 @@ class OzonSellerUrls:
     list_products_available_in_actions = (
         "https://api-seller.ozon.ru/v1/actions/candidates"  # Список доступных для акции товаров
     )
+    product_list = "https://api-seller.ozon.ru/v2/product/list"  # Список товаров
+    product_info = "https://api-seller.ozon.ru/v2/product/info"  # Информация о товарах
 
 
 class OzonPerformanceUrls:

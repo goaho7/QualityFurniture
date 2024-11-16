@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.orm import joinedload
 
 from models import (
     BannerStatistics,
     SearchStatistics,
+    StatisticsHistory,
     StencilStatistics,
     VideoBannerStatistics,
     sqlite_session,
@@ -17,6 +19,7 @@ class StatisticRepository:
         "SEARCH_PROMO": SearchStatistics,
         "SKU": StencilStatistics,
         "VIDEO_BANNER": VideoBannerStatistics,
+        "STAT_HISTORY": StatisticsHistory,
     }
     index_elements = {
         "BANNER": ["campaign_id", "date"],
@@ -30,9 +33,21 @@ class StatisticRepository:
         """Преобразует строку в тип foat"""
         return float(string.replace(",", ".")) if string else None
 
-    def update_statistics(self, data: dict, campaigns: dict, date: datetime):
-        """Обновить таблицы статистики"""
+    def get_statistics(self, type_campaign: str, date_obj: date | str):
+        """Получить статистику по типу кампании и дате"""
+        if isinstance(date_obj, str):
+            date_obj = datetime.strptime(date_obj, "%Y-%m-%d").date()
+        with sqlite_session() as session:
+            model = self.model.get(type_campaign)
+            if model is None:
+                raise ValueError(f"Неизвестный тип кампании: {type_campaign}")
+            query = session.query(model).filter(model.date == date_obj).options(joinedload(model.campaign))
+            return query.all()
 
+    def update_statistics(self, data: dict, campaigns: dict, date_obj: datetime | str):
+        """Обновить таблицы статистики"""
+        if isinstance(date_obj, str):
+            date_obj = datetime.strptime(date_obj, "%Y-%m-%d").date()
         with sqlite_session() as session:
             for key, value in data.items():
                 if value["report"]["rows"]:
@@ -42,7 +57,7 @@ class StatisticRepository:
                             index_elements = self.index_elements[campaigns[int(key)][1]]
                             insert_values = {
                                 "campaign_id": campaigns[int(key)][0],
-                                "date": date,
+                                "date": date_obj,
                                 **{
                                     field: value
                                     for field, value in {
@@ -54,22 +69,23 @@ class StatisticRepository:
                                         "clicks": i.get("clicks"),
                                         "ctr": self.str_to_float(i.get("ctr")),
                                         "avg_bid": self.str_to_float(i.get("avgBid")),
-                                        "reach": i.get("reach"),
+                                        "reach": self.str_to_float(i.get("reach")),
                                         "orders": i.get("orders"),
-                                        "order_id": i.get("order_id"),
-                                        "order_number": i.get("order_number"),
-                                        "adv_sku": i.get("adv_sku"),
-                                        "offer_id": i.get("offer_id"),
+                                        "order_id": i.get("orderId"),
+                                        "order_number": i.get("orderNumber"),
+                                        "adv_sku": i.get("advSku"),
+                                        "offer_id": i.get("offerId"),
                                         "quantity": i.get("quantity"),
-                                        "sale_price": self.str_to_float(i.get("sale_price")),
+                                        "sale_price": self.str_to_float(i.get("salePrice")),
                                         "bid": self.str_to_float(i.get("bid")),
-                                        "bid_value": self.str_to_float(i.get("bid_value")),
+                                        "bid_value": self.str_to_float(i.get("bidValue")),
                                         "orders_money": self.str_to_float(i.get("ordersMoney")),
                                         "models": i.get("models"),
                                         "models_money": self.str_to_float(i.get("modelsMoney")),
                                         "banner": i.get("banner"),
                                         "page_type": i.get("pageType"),
-                                        "attributes_platform": i.get("attributes_platform"),
+                                        "attributes_platform": i.get("attributesPlatform"),
+                                        "cost": self.str_to_float(i.get("cost")),
                                     }.items()
                                     if hasattr(model, field)
                                 },
@@ -86,4 +102,27 @@ class StatisticRepository:
                                 set_=update_values,
                             )
                             session.execute(on_conflict_stmt)
+            session.commit()
+
+    def get_record_by_date(self, date_obj: date):
+        """Получение записи с uuids отчётов за дату"""
+        model = self.model["STAT_HISTORY"]
+        with sqlite_session() as session:
+            return session.query(model).filter(model.date == date_obj).one_or_none()
+
+    def update_statistics_history(self, data: dict):
+        """Добавить/обновить историю загруженных отчётов"""
+        with sqlite_session() as session:
+            insert_stmt = insert(self.model["STAT_HISTORY"]).values(
+                date=data["date"],
+                uuids=data["uuids"],
+            )
+            on_conflict_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=["date"],
+                set_={
+                    "date": data["date"],
+                    "uuids": data["uuids"],
+                },
+            )
+            session.execute(on_conflict_stmt)
             session.commit()
