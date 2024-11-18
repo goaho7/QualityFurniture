@@ -7,6 +7,7 @@ import requests
 from dotenv import load_dotenv
 from requests.exceptions import RequestException
 
+from extract.exceptions import LimitsCampaignStatistics
 from extract.urls import OzonPerformanceUrls, OzonSellerUrls
 from settings import REQUESTS_SESSION
 
@@ -140,6 +141,10 @@ class OzonPerformanceParser:
         for _ in range(3):
             try:
                 response = request.request(method, url, timeout=self.timeout, **kwargs)
+                if response.status_code == 429:
+                    error = response.json().get("error")
+                    if error == "Превышен лимит активных запросов (максимум 1)":
+                        raise LimitsCampaignStatistics(f"{error}, попробуйте позже.")
                 if response.status_code == 404:
                     return None
                 if response.status_code == 403:
@@ -188,8 +193,6 @@ class OzonPerformanceParser:
             "campaigns": campaign_id_list,
             "dateFrom": date_obj_str,
             "dateTo": date_obj_str,
-            # "dateFrom": "2024-09-13",
-            # "dateTo": "2024-11-12",
         }
         response = self._make_request("post", OzonPerformanceUrls.statistics, headers=self.headers, json=payload)
         if response is None:

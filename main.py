@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
+    date = (datetime.now() - timedelta(days=1)).date()
     # campaign_service().update_campaigns()
     # product_service().update_products()
-    # statistic_service().all_reports_load()
-    # d = (datetime.now() - timedelta(days=1)).date()
-    excel_service().load_data()
+    statistic_service().all_reports_load("2024-11-16")
+    # excel_service().load_data("2024-11-17")

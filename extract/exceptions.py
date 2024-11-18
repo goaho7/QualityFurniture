@@ -1,0 +1,2 @@
+class LimitsCampaignStatistics(Exception):
+    pass

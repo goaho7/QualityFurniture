@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from itertools import islice
 
 from extract.ozon_parser import OzonPerformanceParser
@@ -23,11 +23,13 @@ class StatisticService:
         self.campaign_repository = campaign_repository()
         self.statistic_repository = statistic_repository()
 
-    def all_reports_load(self, date=(datetime.now() - timedelta(days=1)).date()) -> list:
+    def all_reports_load(self, date_obj: date | str = (datetime.now() - timedelta(days=1)).date()) -> list:
         """Сохранить все отчёты за Определённую дату (по умолчанию за вчерашнюю)"""
+        if isinstance(date_obj, str):
+            date_obj = datetime.strptime(date_obj, "%Y-%m-%d").date()
         start = time.perf_counter()
-        if self.statistic_repository.get_record_by_date(date):
-            logger.info(f"Отчёты за дату {date}, уже загружены")
+        if self.statistic_repository.get_record_by_date(date_obj):
+            logger.info(f"Отчёты за дату {date_obj}, уже загружены")
             return
         campaigns = self.campaign_repository.get_campaigns()  # Получение списка кампаний
         campaign_id_list = [i.campaign_id for i in campaigns]  # Список ID кампаний
@@ -41,7 +43,7 @@ class StatisticService:
 
         uuids = []
         for chunk_id_list in chunks(campaign_id_list):  # Цикл на получение по 10 кампаний в отчёте
-            uuid = self.ozon_performance.campaign_statistics(chunk_id_list, date)  # Запрос на создание отчёта
+            uuid = self.ozon_performance.campaign_statistics(chunk_id_list, date_obj)  # Запрос на создание отчёта
 
             while True:
                 time.sleep(3)
@@ -51,7 +53,7 @@ class StatisticService:
                     reports = self.ozon_performance.get_reports(uuid)  # Получение отчёта
                     logger.info(f"Сохраняем отчёт: {uuid}")
                     self.statistic_repository.update_statistics(
-                        reports, campaign_id_dict, date
+                        reports, campaign_id_dict, date_obj
                     )  # Сохранение отчёта в БД
                     uuids.append(uuid)
                     logger.info(f"Отчёт: {uuid} сохранён")
@@ -63,9 +65,9 @@ class StatisticService:
                 time.sleep(30)
         self.statistic_repository.update_statistics_history(
             {
-                "date": date,
+                "date": date_obj,
                 "uuids": uuids,
             }
         )
-        work_time = time.perf_counter() - start
-        logger.info(f"Отчёты загружены, время выполнения: {round(work_time, 4)} сек.")
+        work_time = int(time.perf_counter() - start)
+        logger.info(f"Отчёты загружены, время выполнения: {work_time} сек.")
